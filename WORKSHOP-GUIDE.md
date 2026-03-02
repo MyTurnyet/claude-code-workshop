@@ -461,45 +461,38 @@ git checkout session-3-complete
 
 ### Step-by-Step Tasks
 
-#### Task 4.1: Choose and Configure MCP Integration (8 minutes)
+#### Task 4.1: Test Google Docs MCP Connection (5 minutes)
 
-**Option A: Notion Integration**
+**Good News**: Google MCP is already included with Claude CLI!
 
 **Setup:**
-```bash
-# Configure Notion MCP server
-# Follow docs/session-notes/session-4-mcp.md for detailed setup
-
-# Test MCP connection
-claude mcp list
-```
+No installation needed - Google MCP comes with Claude CLI.
 
 **Prompt Claude:**
 ```
-Help me configure the Notion MCP server to:
-1. Connect to my Notion workspace
-2. Create a Tasks database (if needed)
-3. Test the connection by creating a test page
+Test the Google Docs MCP by searching for documents in my Google Drive.
 
-Provide step-by-step instructions.
-```
-
-**Option B: Google Calendar Integration**
-
-**Prompt Claude:**
-```
-Help me configure the Google Calendar MCP server to:
-1. Authenticate with Google Calendar API
-2. Access my calendar
-3. Test creating a sample event
-
-Provide setup instructions.
+Use mcp__google__docs_search with query "task" to find any documents
+related to tasks. Show me the results.
 ```
 
 **Expected Outcome:**
-- MCP server configured and authenticated
-- Connection tested successfully
-- Ready to integrate into application
+- Google MCP responds successfully
+- Can see documents from your Google Drive
+- Document IDs are visible
+- MCP is ready to use!
+
+**Create Task Summary Document:**
+```
+Help me create or identify a Google Doc for storing task summaries.
+I need to get the document ID from the URL so I can configure it
+in my integration service.
+```
+
+Or manually:
+1. Go to https://docs.google.com
+2. Create new document: "Task Management Summary"
+3. Copy document ID from URL: `https://docs.google.com/document/d/YOUR-DOC-ID/edit`
 
 #### Task 4.2: Implement Task Assignments Feature (10 minutes)
 
@@ -521,71 +514,72 @@ Follow PLAN.md and CLAUDE.md rules.
 - Tests cover new functionality
 - All tests pass
 
-#### Task 4.3: Integrate MCP Service (8 minutes)
-
-**For Notion Integration:**
+#### Task 4.3: Integrate Google Docs MCP Service (10 minutes)
 
 **Prompt Claude:**
 ```
-Create NotionIntegration service in src/main/java/com/workshop/taskapi/integration/NotionIntegration.java
+Update GoogleDocsIntegrationService in
+src/main/java/com/workshop/taskapi/integration/GoogleDocsIntegrationService.java
 
 Features:
-- Sync tasks to Notion database
-- Update Notion when task status changes
-- Handle bidirectional sync (if time permits)
+1. appendTaskToDocument(Task task) - Add task entry to Google Doc
+2. createTaskSummaryDocument(List<Task> tasks) - Generate full summary
+3. Format tasks as markdown (## Title, **Status**, etc.)
+4. Handle MCP errors gracefully
+5. Log all operations
 
-Use the Notion MCP server we configured.
-Follow CLAUDE.md rules.
-```
+Use these Google MCP tools:
+- mcp__google__docs_search(query, max_results)
+- mcp__google__docs_get(file_id)
 
-**For Google Calendar Integration:**
+Follow CLAUDE.md conventions.
 
-**Prompt Claude:**
-```
-Create CalendarIntegration service in src/main/java/com/workshop/taskapi/integration/CalendarIntegration.java
-
-Features:
-- Create calendar events from tasks with due dates
-- Update events when task changes
-- Delete events when task is completed
-
-Use the Google Calendar MCP server we configured.
-Follow CLAUDE.md rules.
+My Task Summary Google Doc ID: [your-doc-id-here]
 ```
 
 **Expected Outcome:**
-- Integration service created
-- MCP tools used correctly
+- GoogleDocsIntegrationService updated with MCP calls
+- Tasks format as markdown
 - Sync functionality works
 - Error handling in place
 
 **Verification:**
 ```bash
-# Create a task
+# Create a task (should append to Google Doc)
 curl -X POST http://localhost:8080/api/tasks \
   -H "Content-Type: application/json" \
-  -d '{"title":"Test MCP Sync","description":"Should appear in Notion/Calendar"}'
+  -d '{"title":"Test MCP Sync","description":"Should appear in Google Doc"}'
 
-# Check Notion or Google Calendar to verify sync
+# Get all tasks (should create summary document)
+curl http://localhost:8080/api/tasks
+
+# Check your Google Doc - task should appear!
+```
+
+**Verify with Claude:**
+```
+Use mcp__google__docs_get with file_id "[your-doc-id]" to read my
+Task Management Summary document and show me what's in it.
 ```
 
 #### Task 4.4: Use MCP During Development (4 minutes)
 
 **Prompt Claude:**
 ```
-Use the Notion/Calendar MCP integration during development:
+Use the Google Docs MCP integration during development:
 
-1. Save design decisions to Notion as we implement
-2. Document any issues encountered in Notion
-3. Create a "Workshop Complete" task and sync it
+1. Save design decisions to Google Docs as we implement
+2. Document any issues encountered in a Google Doc
+3. Create a "Workshop Complete" task and sync it to the summary document
 
-This demonstrates using MCP as part of the development workflow, not just in production.
+This demonstrates using MCP as part of the development workflow, not just in production code.
 ```
 
 **Expected Outcome:**
-- Development notes saved to external service
+- Development notes saved to Google Docs
 - Demonstrates MCP value in workflow
 - Workshop completion documented
+- Can search and retrieve notes later with MCP
 
 ### Complete Workflow Review
 
