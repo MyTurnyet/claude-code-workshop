@@ -39,9 +39,9 @@ curl -X PUT http://localhost:8080/api/tasks/1 \
 
 ## MCP Integration
 
-### NotionIntegrationService
+### GoogleDocsIntegrationService
 A stub implementation is provided in:
-`src/main/java/com/workshop/taskapi/integration/NotionIntegrationService.java`
+`src/main/java/com/workshop/taskapi/integration/GoogleDocsIntegrationService.java`
 
 This service demonstrates the integration pattern but requires actual MCP configuration in Session 4.
 
@@ -49,14 +49,17 @@ This service demonstrates the integration pattern but requires actual MCP config
 
 In Session 4, participants will:
 
-1. **Configure MCP Server**
-   - Set up Notion or Google Calendar MCP
-   - Authenticate with the service
-   - Test connection
+1. **Configure Google MCP Server**
+   - Google MCP is already available in Claude CLI!
+   - Authenticate with Google account (automatic)
+   - Test connection with docs_search
+   - Create or identify a Google Doc for task summaries
 
 2. **Implement Real Integration**
    - Replace TODO comments with actual MCP calls
-   - Map Task fields to Notion properties or Calendar events
+   - Use `mcp__google__docs_search` to find documents
+   - Use `mcp__google__docs_get` to read document content
+   - Format tasks as markdown for Google Docs
    - Test synchronization
 
 3. **Add to TaskService**
@@ -71,69 +74,112 @@ In Session 4, participants will:
 public class TaskService {
 
     private final TaskRepository taskRepository;
-    private final NotionIntegrationService notionIntegration;
+    private final GoogleDocsIntegrationService googleDocsIntegration;
 
     public Task createTask(Task task) {
         Task saved = taskRepository.save(task);
 
-        // Sync to Notion after saving
+        // Append to Google Doc after saving
         try {
-            notionIntegration.syncTaskToNotion(saved);
+            googleDocsIntegration.appendTaskToDocument(saved);
         } catch (Exception e) {
-            log.warn("Failed to sync task to Notion", e);
+            log.warn("Failed to append task to Google Doc", e);
             // Don't fail the main operation
         }
 
         return saved;
+    }
+
+    public List<Task> getAllTasks() {
+        List<Task> tasks = taskRepository.findAll();
+
+        // Create summary document
+        try {
+            googleDocsIntegration.createTaskSummaryDocument(tasks);
+        } catch (Exception e) {
+            log.warn("Failed to create summary document", e);
+        }
+
+        return tasks;
     }
 }
 ```
 
 ## MCP Configuration
 
-### Notion MCP Setup
-1. Create Notion integration at https://www.notion.so/my-integrations
-2. Get integration token
-3. Create Tasks database in Notion
-4. Configure Claude CLI with Notion MCP
-5. Update NOTION_DATABASE_ID in NotionIntegrationService
+### Google Docs MCP Setup
 
-### Google Calendar MCP Setup
-1. Enable Google Calendar API in Google Cloud Console
-2. Create OAuth 2.0 credentials
-3. Configure Claude CLI with Calendar MCP
-4. Implement calendar event creation in integration service
+**Good News**: Google MCP is already included with Claude CLI! No separate installation needed.
+
+**Setup Steps**:
+
+1. **Authentication** (automatic):
+   - Google MCP uses your Google account
+   - Authentication happens when you first use it with Claude
+
+2. **Test the connection**:
+   ```
+   Prompt Claude:
+   "Use mcp__google__docs_search to search for documents with 'task' in my Google Drive."
+   ```
+
+3. **Create a Task Summary Document**:
+   - Create a new Google Doc called "Task Management Summary"
+   - Get the document ID from the URL:
+     `https://docs.google.com/document/d/YOUR-DOC-ID-HERE/edit`
+   - Update `TASK_SUMMARY_DOC_ID` in GoogleDocsIntegrationService
+
+4. **Available Google MCP Tools**:
+   - `mcp__google__docs_search(query, max_results)` - Search Google Drive
+   - `mcp__google__docs_get(file_id)` - Get document content
+   - `mcp__google__meeting_notes_search(query)` - Search meeting notes
+   - `mcp__google__calendar_events` - Calendar integration (alternative option)
+   - `mcp__google__calendar_list` - List calendars (alternative option)
 
 ## Testing the Integration
 
-### Manual Testing
+### Manual Testing with Google Docs
 ```bash
-# Create a task (should sync to Notion/Calendar)
+# Create a task (should append to Google Doc)
 curl -X POST http://localhost:8080/api/tasks \
   -H "Content-Type: application/json" \
   -d '{
     "title": "Test MCP Sync",
-    "description": "Should appear in Notion or Calendar",
+    "description": "Should appear in Google Doc",
     "dueDate": "2024-12-31",
     "priority": "HIGH"
   }'
 
-# Check your Notion database or Google Calendar
-# The task should appear there!
+# Get all tasks (should create/update summary document)
+curl http://localhost:8080/api/tasks
+
+# Check your Google Doc - the task entries should appear!
+```
+
+### Testing Google MCP Directly
+```
+# Search for documents
+"Use mcp__google__docs_search to find documents with 'task' in the title"
+
+# Get a specific document
+"Use mcp__google__docs_get with file_id 'YOUR-DOC-ID' to read the Task Summary document"
+
+# Verify task was added
+"Show me the contents of my Task Management Summary document"
 ```
 
 ### Integration Test Pattern
 ```java
 @Test
-void shouldSyncTaskToNotionWhenCreated() {
+void shouldAppendTaskToGoogleDocWhenCreated() {
     // This would require mocking the MCP service
-    // or using a test Notion database
+    // or using a test Google Doc
 
     Task task = new Task("Test", "Description");
     Task created = taskService.createTask(task);
 
-    // Verify sync was attempted
-    verify(notionIntegration).syncTaskToNotion(created);
+    // Verify append was attempted
+    verify(googleDocsIntegration).appendTaskToDocument(created);
 }
 ```
 

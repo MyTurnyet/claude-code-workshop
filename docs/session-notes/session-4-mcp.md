@@ -57,149 +57,188 @@ By the end of this session, you will:
 
 ---
 
-## Option A: Notion Integration Path
+## Google Docs Integration (Recommended)
 
-### Task A1: Configure Notion MCP (8 minutes)
+### Task 1: Test Google Docs MCP Connection (5 minutes)
 
-**Prerequisites**:
-- Notion account (free tier OK)
-- Notion integration token
+**Goal**: Verify Google MCP is working
 
-**Setup Steps**:
-
-1. **Create Notion Integration**:
-   ```
-   - Go to https://www.notion.so/my-integrations
-   - Click "New integration"
-   - Name: "Task Management API"
-   - Select workspace
-   - Copy integration token
-   ```
-
-2. **Configure MCP Server**:
-   ```bash
-   # Configure Notion MCP in Claude
-   # Follow Claude MCP configuration docs
-   ```
-
-3. **Test Connection**:
-   ```
-   Prompt Claude:
-   "Use the Notion MCP to create a test page in my workspace
-   with title 'MCP Test' and content 'Connection successful'."
-   ```
-
-**Success Check**:
-- [ ] Notion integration created
-- [ ] MCP server configured
-- [ ] Test page created successfully
-
-### Task A2: Create Notion Tasks Database (5 minutes)
-
-**Goal**: Set up database for task sync
+**Good News**: Google MCP is already included with Claude CLI!
 
 **Example Prompt**:
 ```
-Using the Notion MCP, help me create a Notion database called "Tasks"
-with these properties:
-- Title (title)
-- Description (text)
-- Status (select: Pending, In Progress, Completed)
-- Priority (select: Low, Medium, High)
-- Due Date (date)
-- Assignee (text)
-- Created At (created time)
+Test the Google Docs MCP by searching for documents in my Google Drive.
 
-Provide the database ID for use in our integration.
+Use mcp__google__docs_search with query "task" to find any documents
+related to tasks. Show me the results.
 ```
 
-**Alternative**: Create manually in Notion, then get database ID via MCP
+**Expected Output**:
+- List of documents from your Google Drive
+- Document IDs and titles
+- Confirmation MCP is working
+
+**Alternative Test**:
+```
+Use mcp__google__docs_search to find all documents I've edited recently.
+```
 
 **Success Check**:
-- [ ] Tasks database exists in Notion
-- [ ] All properties configured
-- [ ] Database ID obtained
+- [ ] Google MCP responds successfully
+- [ ] Can see documents from your Drive
+- [ ] Document IDs are visible
 
-### Task A3: Implement Notion Integration Service (10 minutes)
+### Task 2: Create Task Summary Document (3 minutes)
 
-**Goal**: Sync tasks to Notion
+**Goal**: Create or identify a Google Doc for task summaries
+
+**Option A - Create via Claude**:
+```
+Help me create a new Google Doc called "Task Management Summary"
+that will store all my task information. If you can't create it directly,
+guide me through creating it manually and getting its ID.
+```
+
+**Option B - Create Manually**:
+1. Go to https://docs.google.com
+2. Create a new document
+3. Name it "Task Management Summary"
+4. Copy the document ID from the URL:
+   `https://docs.google.com/document/d/YOUR-DOC-ID-HERE/edit`
+5. Save this ID for the next step
+
+**Success Check**:
+- [ ] Document created in Google Drive
+- [ ] Document ID obtained
+- [ ] Can access document
+
+### Task 3: Implement Google Docs Integration Service (10 minutes)
+
+**Goal**: Create service to sync tasks to Google Doc
 
 **Example Prompt**:
 ```
-Following the Plan agent's design from Session 3, create NotionIntegrationService
-in src/main/java/com/workshop/taskapi/integration/NotionIntegrationService.java
+Following the Plan agent's design from Session 3, update GoogleDocsIntegrationService
+in src/main/java/com/workshop/taskapi/integration/GoogleDocsIntegrationService.java
 
 Features:
-1. syncTaskToNotion(Task task) - Create/update page in Notion
-2. Called automatically when task is created or updated
-3. Map Task fields to Notion properties
+1. appendTaskToDocument(Task task) - Add task entry to Google Doc
+2. createTaskSummaryDocument(List<Task> tasks) - Generate full summary
+3. Format tasks as markdown (## Title, **Status**, etc.)
 4. Handle MCP errors gracefully
-5. Log sync operations
+5. Log all operations
 
-Use the Notion MCP server we configured.
+Use these Google MCP tools:
+- mcp__google__docs_search(query, max_results)
+- mcp__google__docs_get(file_id)
+
 Follow CLAUDE.md conventions.
 
-Notion database ID: [your-database-id]
+My Task Summary Google Doc ID: [your-doc-id-here]
 ```
 
 **What Should Be Created**:
 ```java
 @Service
-public class NotionIntegrationService {
+public class GoogleDocsIntegrationService {
 
-    private static final String NOTION_DATABASE_ID = "your-database-id";
-    private static final Logger log = LoggerFactory.getLogger(NotionIntegrationService.class);
+    private static final String TASK_SUMMARY_DOC_ID = "your-doc-id";
+    private static final Logger log = LoggerFactory.getLogger(GoogleDocsIntegrationService.class);
 
-    public void syncTaskToNotion(Task task) {
+    public void appendTaskToDocument(Task task) {
         try {
-            // Use Notion MCP to create/update page
-            log.info("Syncing task {} to Notion", task.getId());
-            // MCP call here
+            log.info("Appending task {} to Google Doc", task.getId());
+
+            // Format task as markdown
+            String taskEntry = formatTaskEntry(task);
+
+            // Use MCP to append to document
+            // mcp__google__docs_get to read current content
+            // Append new task entry
+            // Update document
+
+            log.info("Successfully appended task {} to Google Doc", task.getId());
         } catch (Exception e) {
-            log.error("Failed to sync task to Notion", e);
+            log.error("Failed to append task: {}", e.getMessage());
             // Don't throw - graceful degradation
         }
+    }
+
+    public void createTaskSummaryDocument(List<Task> tasks) {
+        try {
+            log.info("Creating task summary with {} tasks", tasks.size());
+
+            // Build summary content with task counts by status
+            String summary = buildTaskSummaryContent(tasks);
+
+            // Use MCP to update document
+
+            log.info("Successfully created task summary");
+        } catch (Exception e) {
+            log.error("Failed to create summary: {}", e.getMessage());
+        }
+    }
+
+    private String formatTaskEntry(Task task) {
+        // Format as markdown
+        return String.format(
+            "## %s\n\n**Status**: %s\n**Priority**: %s\n**Description**: %s\n\n---\n\n",
+            task.getTitle(),
+            task.getStatus(),
+            task.getPriority(),
+            task.getDescription()
+        );
     }
 }
 ```
 
 **Update TaskService**:
 ```
-Update TaskService to call NotionIntegrationService.syncTaskToNotion()
-after creating or updating a task. Use async processing if possible.
+Update TaskService to call GoogleDocsIntegrationService.appendTaskToDocument()
+after creating a task, and call createTaskSummaryDocument() when getting all tasks.
 ```
 
 **Success Check**:
-- [ ] NotionIntegrationService created
-- [ ] Integration with Notion MCP working
-- [ ] Tasks sync to Notion automatically
+- [ ] GoogleDocsIntegrationService updated
+- [ ] Integration with Google Docs MCP working
+- [ ] Tasks format as markdown
 - [ ] Error handling in place
 
-### Task A4: Test Notion Integration (2 minutes)
+### Task 4: Test Google Docs Integration (4 minutes)
 
-**Verify**:
+**Verify API Integration**:
 ```bash
-# Create a task via API
+# Create a task (should append to Google Doc)
 curl -X POST http://localhost:8080/api/tasks \
   -H "Content-Type: application/json" \
   -d '{
     "title":"MCP Integration Test",
-    "description":"Should appear in Notion",
+    "description":"Should appear in Google Doc",
     "status":"PENDING",
     "priority":"HIGH"
   }'
 
-# Check Notion database - task should appear!
+# Get all tasks (should create summary document)
+curl http://localhost:8080/api/tasks
+
+# Check your Google Doc - task entries should appear!
+```
+
+**Verify with Claude**:
+```
+Use mcp__google__docs_get with file_id "[your-doc-id]" to read my
+Task Management Summary document and show me what's in it.
 ```
 
 **Success Check**:
 - [ ] Task created in API
-- [ ] Task appears in Notion
-- [ ] All fields mapped correctly
+- [ ] Task appears in Google Doc
+- [ ] Summary document updates
+- [ ] Can read document via MCP
 
 ---
 
-## Option B: Google Calendar Integration Path
+## Alternative: Google Calendar Integration
 
 ### Task B1: Configure Google Calendar MCP (8 minutes)
 
