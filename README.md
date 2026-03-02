@@ -96,8 +96,15 @@ Start from scratch and build everything with Claude's help:
 
 ### Option 2: Use Checkpoint Branches
 
-If you fall behind or want to start from a specific session, use checkpoint branches:
+If you fall behind or want to start from a specific session, use checkpoint branches.
 
+**Available checkpoints:**
+- `session-1-complete` - Planning + Foundation (Task entity, repository, tests)
+- `session-2-complete` - REST API + Service Layer (Full CRUD, 30+ tests)
+- `session-3-complete` - Filtering + Search (All queries working)
+- `session-4-complete` - Final Solution (Assignments + MCP integration)
+
+**Quick start from a checkpoint:**
 ```bash
 # See available checkpoints
 git branch -a
@@ -113,7 +120,12 @@ git checkout session-3-complete
 
 # See final completed solution
 git checkout session-4-complete
+
+# Verify it works
+mvn clean test
 ```
+
+**📖 See [CHECKPOINT-BRANCHES.md](CHECKPOINT-BRANCHES.md) for detailed information about each checkpoint.**
 
 ## Workshop Sessions
 
